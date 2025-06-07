@@ -1,11 +1,10 @@
 <?php
-require('admin/inc/essentials.php');
-require('admin/inc/db_config.php');
-require_once('admin/inc/pdf/vendor/autoload.php');
-session_start();
-if (!(isset($_SESSION['login']) && $_SESSION['login'] == true)) {
-    redirect("index.php");
-}
+require('inc/essentials.php');
+require('inc/db_config.php');
+require_once('inc/pdf/vendor/autoload.php');
+
+adminLogin();
+
 if (isset($_GET['gen_pdf']) && isset($_GET['id'])) {
     $frm_data = filteration($_GET);
     $booking_id = $frm_data['id'];
@@ -38,6 +37,7 @@ if (isset($_GET['gen_pdf']) && isset($_GET['id'])) {
     $check_in = new DateTime($data['check_in']);
     $check_out = new DateTime($data['check_out']);
     $days = date_diff($check_in, $check_out)->days + 1;
+    //$days = max(1, $count_days->days); // Ensure at least 1 day is counted
 
     // Calculate Hall Total
     $hall_total = $data['price'] * $days;
@@ -58,7 +58,6 @@ if (isset($_GET['gen_pdf']) && isset($_GET['id'])) {
 
     // Calculate Grand Total (Hall + Services)
     $total_amount = $hall_total + $service_total;
-
     // Refund status
     $refund_status = ($data['booking_status'] == 'cancelled') ? ($data['refund'] ? "Amount Refunded" : "Not yet Refunded") : "N/A";
 
@@ -106,10 +105,11 @@ if (isset($_GET['gen_pdf']) && isset($_GET['id'])) {
         </table>
     </div>";
 
+    // Generate and download PDF
     $mpdf = new \Mpdf\Mpdf();
     $mpdf->WriteHTML($html);
-    $mpdf->Output("Booking_Receipt_{$data['order_id']}.pdf", 'D');
+    $mpdf->Output("Booking_$data[order_id].pdf", 'D');
 } else {
-    header('location: index.php');
+    header('location: dashboard.php');
 }
 ?>

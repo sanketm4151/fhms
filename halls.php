@@ -1,242 +1,271 @@
+<?php
+require('inc/essentials.php');
+require('inc/db_config.php');
+adminLogin();
+?>
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <?php require("includes/links.php"); ?>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta charset="utf-8"/>
-  <title><?php echo $settings_r['site_title'] ?> - Halls</title>
-  <style>
-    .pop:hover {
-      border-top-color: #2ec1ac !important;
-      transform: scale(1.03);
-      transition: all 0.3s;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Halls</title>
+    <?php require('inc/links.php'); ?>
 </head>
 
-<body>
-  <?php
-  include("includes/header.php");
-  $checkin_default = "";
-  $checkout_default = "";
-  $no_guests_default = "";
-  if (isset($_GET['check_availability'])) {
-    $frm_data = filteration($_GET);
-    $checkin_default = $frm_data['checkin'];
-    $checkout_default = $frm_data['checkout'];
-    $no_guests_default = $frm_data['no_guests'];
-  }
-  ?>
+<body class="bg-light">
 
-  <div class="my-5 px-4">
-    <h2 class="fw-bold h-font text-center">OUR HALLS</h2>
-    <div class="h-line bg-dark">
+    <?php require('inc/header.php'); ?>
 
-    </div>
-  </div>
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-lg-3 col-md-12 mb-lg-0 mb-4 ps-4">
-        <nav class="navbar navbar-expand-lg navbar-light bg-white rounded shadow">
-          <div class="container-fluid flex-lg-column align-items-stretch">
-            <h4 class="d-flex align-items-center justify-content-between mt-3">FILTERS
-              <button id="filter_btn" class="btn btn-sm text-secondary d-none shadow-none"
-                onclick="filter_clear()">RESET</button>
-            </h4>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#filterDropdown"
-              aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-              <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse flex-column align-items-stretch mt-2" id="filterDropdown">
+    <div class="container-fluid" id="main-content">
+        <div class="row">
+            <div class="col-lg-10 ms-auto p-4 overflow-hidden">
+                <h3 class="mb-4 ">HALLS</h3>
 
-              <!-- Check availability -->
-              <div class="border bg-light p-3 rounded mb-3">
-                <h5 class="d-flex align-items-center justify-content-between mb-3" style="font-size:18px;">
-                  <span>CHECK AVAILABILITY</span>
-                  <button id="chk_avail_btn" class="btn btn-sm text-secondary d-none shadow-none"
-                    onclick="chk_avail_clear()">Reset</button>
-                </h5>
-                <label class="form-label">Check-in</label>
-                <input type="date" class="form-control shadow-none mb-3" value="<?php echo $checkin_default ?>"
-                  id="checkin" onchange="chk_avail_filter()">
-                <label class="form-label">Check-out</label>
-                <input type="date" class="form-control shadow-none mb-3" value="<?php echo $checkout_default ?>"
-                  id="checkout" onchange="chk_avail_filter()">
-                <!-- <h6 class="mb-3 text-danger" id="pay_info">Provide Check-In & Check-Out date!</h6> -->
-              </div>
+                <div class="card border-0 shadow-md mb-4">
+                    <div class="card-body">
 
-              <!-- Facilities -->
-              <div class="border bg-light p-3 rounded mb-3">
-                <h5 class="d-flex align-items-center justify-content-between mb-3" style="font-size:18px;">
-                  <span>FACILITIES</span>
-                  <button id="facilities_btn" class="btn btn-sm text-secondary d-none shadow-none"
-                    onclick="facilities_clear()">Reset</button>
-                </h5>
-                <?php
-                $facilities_q = selectAll('facilities');
-                while ($row = mysqli_fetch_assoc($facilities_q)) {
-                  echo <<<facilities
-                    <div class='mb-2'>
-                      <input type='checkbox' name='facilities' value='$row[id]' onclick='fetch_halls()' class='form-check-input shadow-none me-1' id='$row[id]'>
-                      <label class='form-check-label' for='$row[id]'>$row[name]</label>
+                        <div class="text-end mb-4">
+                            <button type="button" class="btn btn-dark shadow-none btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#add-hall"><i class="bi bi-plus-square"></i> Add
+                            </button>
+                        </div>
+
+                        <div class="table-responsive-lg" style="height: 450px; overflow-y: scroll;">
+                            <table class="table table-hover border text-center">
+                                <thead>
+                                    <tr class="bg-dark text-light">
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Area</th>
+                                        <th scope="col">Guests</th>
+                                        <th scope="col">Price</th>
+                                        <!-- <th scope="col">Quantity</th> -->
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hall-data">
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
-                  facilities;
-                }
-                ?>
-              </div>
-
-              <!-- Guests -->
-              <div class="border bg-light p-3 rounded mb-3">
-                <h5 class="d-flex align-items-center justify-content-between mb-3" style="font-size:18px;">
-                  <span>GUESTS</span>
-                  <button id="guest_btn" class="btn btn-sm text-secondary d-none shadow-none"
-                    onclick="guests_clear()">Reset</button>
-                </h5>
-                <div class="d-flex">
-                  <div class="me-3">
-                    <label class="form-label">No. of Guests</label>
-                    <input type="number" min="1" value="<?php echo $no_guests_default ?>" id="no_guests"
-                      class="form-control shadow-none" oninput="guests_filter()">
-                  </div>
                 </div>
-              </div>
+
 
             </div>
-          </div>
-        </nav>
-      </div>
-
-      <div class="col-lg-9 col-md-12 px-4" id="halls-data">
-
-      </div>
-
+        </div>
     </div>
-  </div>
 
-  <script>
-    let halls_data = document.getElementById('halls-data');
+    <!-- Add hall modal -->
 
-    let filter_btn = document.getElementById('filter_btn');
+    <div class="modal fade" id="add-hall" data-bs-backdrop="static" data-bs-keyboard="true" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form id="add_hall_form" autocomplete="off" method="POST">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Hall</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Name</label>
+                                <input type="text" name="name" class="form-control shadow-none" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Area</label>
+                                <input type="text" name="area" class="form-control shadow-none" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Price</label>
+                                <input type="text" name="price" class="form-control shadow-none" required>
+                            </div>
+                            <!-- <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Quantity</label>
+                                <input type="text" name="quantity" class="form-control shadow-none" required>
+                            </div> -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Guests</label>
+                                <input type="number" name="guests" class="form-control shadow-none" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Features</label>
+                                <div class="row">
+                                    <?php
+                                    $res = selectAll('features');
+                                    while ($opt = mysqli_fetch_assoc($res))
+                                        echo "
+                                            <div class='col-md-3 mb-1'>
+                                                <label>
+                                                    <input type='checkbox' name='features' value='$opt[id]' class='form-check-input shadow-none'>
+                                                    $opt[name]
+                                                </label>
+                                            </div>
+                                        ";
+                                    ?>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Facilities</label>
+                                <div class="row">
+                                    <?php
+                                    $res = selectAll('facilities');
+                                    while ($opt = mysqli_fetch_assoc($res))
+                                        echo "
+                                            <div class='col-md-3 mb-1'>
+                                                <label>
+                                                    <input type='checkbox' name='facilities' value='$opt[id]' class='form-check-input shadow-none'>
+                                                    $opt[name]
+                                                </label>
+                                            </div>
+                                        ";
+                                    ?>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Description</label>
+                                <textarea name="desc" rows="3" class="form-control shadow-none" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="reset" class="btn text-secondary shadow-none"
+                            data-bs-dismiss="modal">CANCEL</button>
+                        <button type="submit" class="btn custom-bg text-white shadow-none">SAVE</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    let checkin = document.getElementById('checkin');
-    let checkout = document.getElementById('checkout');
-    let chk_avail_btn = document.getElementById('chk_avail_btn');
-    //let pay_info = document.getElementById('pay_info');
+    <!-- Edit hall modal -->
 
-    let no_guests = document.getElementById('no_guests');
-    let guest_btn = document.getElementById('guest_btn');
+    <div class="modal fade" id="edit-hall" data-bs-backdrop="static" data-bs-keyboard="true" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form id="edit_hall_form" autocomplete="off" method="POST">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Hall</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Name</label>
+                                <input type="text" name="name" class="form-control shadow-none" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Area</label>
+                                <input type="text" name="area" class="form-control shadow-none" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Price</label>
+                                <input type="text" name="price" class="form-control shadow-none" required>
+                            </div>
+                            <!-- <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Quantity</label>
+                                <input type="text" name="quantity" class="form-control shadow-none" required>
+                            </div> -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Guests</label>
+                                <input type="number" name="guests" class="form-control shadow-none" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Features</label>
+                                <div class="row">
+                                    <?php
+                                    $res = selectAll('features');
+                                    while ($opt = mysqli_fetch_assoc($res))
+                                        echo "
+                                            <div class='col-md-4 mb-1'>
+                                                <label>
+                                                    <input type='checkbox' name='features' value='$opt[id]' class='form-check-input shadow-none'>
+                                                    $opt[name]
+                                                </label>
+                                            </div>
+                                        ";
+                                    ?>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Facilities</label>
+                                <div class="row">
+                                    <?php
+                                    $res = selectAll('facilities');
+                                    while ($opt = mysqli_fetch_assoc($res))
+                                        echo "
+                                            <div class='col-md-4 mb-1'>
+                                                <label>
+                                                    <input type='checkbox' name='facilities' value='$opt[id]' class='form-check-input shadow-none'>
+                                                    $opt[name]
+                                                </label>
+                                            </div>
+                                        ";
+                                    ?>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Description</label>
+                                <textarea name="desc" rows="3" class="form-control shadow-none" required></textarea>
+                            </div>
+                            <input type="hidden" name="hall_id">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="reset" class="btn text-secondary shadow-none"
+                            data-bs-dismiss="modal">CANCEL</button>
+                        <button type="submit" class="btn custom-bg text-white shadow-none">SAVE</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    let facilities_btn = document.getElementById('facilities_btn');
+    <!-- Manage hall images modal -->
 
+    <div class="modal fade" id="hall-images" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Hall Name</h5>
+                    <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="image-alert"></div>
+                    <div class="border-bottom border-3 pb-3 mb-3">
+                        <form id="add_image_form" method="POST">
+                            <label class="form-label fw-bold">Add Image</label>
+                            <input type="file" name="image" accept=".jpg, .png, .webp, .jpeg"
+                                class="form-control shadow-none mb-3" required>
+                            <button type="submit" class="btn custom-bg text-white shadow-none">ADD</button>
+                            <input type="hidden" name="hall_id">
+                        </form>
+                    </div>
+                    <div class="table-responsive-lg" style="height: 350px; overflow-y: scroll;">
+                        <table class="table table-hover border text-center">
+                            <thead>
+                                <tr class="bg-dark text-light sticky-top">
+                                    <th scope="col" width="55%">Image</th>
+                                    <th scope="col">Thumb</th>
+                                    <th scope="col">Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hall-image-data">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    function fetch_halls() {
-      let chk_avail = JSON.stringify({
-        checkin: checkin.value,
-        checkout: checkout.value
-      });
-
-      let guests = JSON.stringify({
-        no_guests: no_guests.value
-      });
-
-      let facility_list = { "facilities": [] };
-
-      let get_facilities = document.querySelectorAll('[name="facilities"]:checked');
-      if (get_facilities.length > 0) {
-        get_facilities.forEach((facility) => {
-          facility_list.facilities.push(facility.value);
-        });
-        facilities_btn.classList.remove('d-none');
-        filter_btn.classList.remove('d-none');
-      }
-      else {
-        facilities_btn.classList.add('d-none');
-      }
-      facility_list = JSON.stringify(facility_list);
-
-      let xhr = new XMLHttpRequest();
-      xhr.open('GET', 'ajax/halls.php?fetch_halls&chk_avail=' + chk_avail + '&guests=' + guests + '&facility_list=' + facility_list, true);
-      xhr.onprogress = function () {
-        halls_data.innerHTML = `<div class="spinner-border text-info mb-3 d-block mx-auto" id="loader" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>`;
-      }
-      xhr.onload = function () {
-        halls_data.innerHTML = this.responseText;
-      }
-      xhr.send();
-    }
-
-    function chk_avail_filter() {
-      if (checkin.value != '' && checkout.value != '') {
-        //pay_info.classList.add('d-none');
-        fetch_halls();
-        chk_avail_btn.classList.remove('d-none');
-        filter_btn.classList.remove('d-none');
-      }
-      else{
-        filter_btn.classList.add('d-none');
-      }
-    }
-
-    function chk_avail_clear() {
-      checkin.value = "";
-      checkout.value = "";
-      chk_avail_btn.classList.add('d-none');
-      //pay_info.classList.remove('d-none');
-      fetch_halls();
-    }
-
-    function guests_filter() {
-      if (no_guests.value > 0) {
-        fetch_halls();
-        guest_btn.classList.remove('d-none');
-        filter_btn.classList.remove('d-none');
-      }
-      else{
-        filter_btn.classList.add('d-none');
-      }
-    }
-
-    function guests_clear() {
-      no_guests.value = "";
-      guest_btn.classList.add('d-none');
-      fetch_halls();
-    }
-
-    function facilities_clear() {
-      let get_facilities = document.querySelectorAll('[name="facilities"]:checked');
-      get_facilities.forEach((facility) => {
-        facility.checked = false;
-      });
-      facilities_btn.classList.add('d-none');
-      fetch_halls();
-    }
-
-    function filter_clear() {
-      checkin.value = "";
-      checkout.value = "";
-      no_guests.value = "";
-      let get_facilities = document.querySelectorAll('[name="facilities"]:checked');
-      chk_avail_btn.classList.add('d-none');
-      //pay_info.classList.remove('d-none');
-      guest_btn.classList.add('d-none');
-      get_facilities.forEach((facility) => {
-        facility.checked = false;
-      });
-      facilities_btn.classList.add('d-none');
-      filter_btn.classList.add('d-none');
-      fetch_halls();
-    }
-
-    window.onload = function () {
-      fetch_halls();
-    }
-
-  </script>
-  <?php require("includes/footer.php"); ?>
-
+    <?php require('inc/scripts.php'); ?>
+    <script src="scripts/halls.js"></script>
 </body>
 
 </html>
